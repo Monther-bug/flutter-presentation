@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Flutter UI & State Management</title>
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep:    #0d1117;
+      --bg-card:    #161b27;
+      --bg-panel:   #1e2535;
+      --border:     #2d3650;
+      --accent:     #7c6aff;
+      --accent2:    #00c9a7;
+      --accent3:    #ff6b6b;
+      --accent4:    #ffd166;
+      --text:       #e6edf3;
+      --text-dim:   #8b949e;
+      --code-bg:    #0d1117;
+      --radius:     12px;
+      --trans:      600ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ─── Progress Bar ──────────────────────────────────────────────── */
+    #progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width var(--trans);
+      z-index: 100;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* ─── Slide Counter ─────────────────────────────────────────────── */
+    #counter {
+      position: fixed;
+      top: 14px; right: 22px;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      z-index: 100;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ─── Slide Wrapper ─────────────────────────────────────────────── */
+    #slides-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 5rem 5rem;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity var(--trans), transform var(--trans);
+      pointer-events: none;
+    }
+
+    .slide.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: all;
+    }
+
+    .slide.exit {
+      opacity: 0;
+      transform: translateY(-40px);
+    }
+
+    /* ─── Slide Label (top-left chip) ────────────────────────────────── */
+    .slide-label {
+      position: absolute;
+      top: 28px; left: 40px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(124,106,255,0.12);
+      border: 1px solid rgba(124,106,255,0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    /* ─── Typography ────────────────────────────────────────────────── */
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      font-weight: 800;
+      line-height: 1.15;
+      text-align: center;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.8rem;
+    }
+
+    h2 {
+      font-size: clamp(1.4rem, 2.5vw, 2rem);
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--text-dim);
+      text-align: center;
+      max-width: 560px;
+      line-height: 1.6;
+    }
+
+    .explain {
+      font-size: 1.05rem;
+      color: var(--text-dim);
+      max-width: 700px;
+      line-height: 1.75;
+      text-align: center;
+      margin-bottom: 1.8rem;
+    }
+
+    .explain strong { color: var(--accent2); font-weight: 700; }
+    .explain em     { color: var(--accent4); font-style: normal; font-weight: 600; }
+
+    /* ─── Cards / Panels ────────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.8rem;
+    }
+
+    /* ─── Code Block ────────────────────────────────────────────────── */
+    .code-wrap {
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #1a2030;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 8px 16px;
+    }
+
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+
+    .code-file {
+      margin-left: auto;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 1.2rem 1.6rem;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    /* Syntax colors */
+    .kw  { color: #c792ea; }  /* keyword   */
+    .cls { color: #ffcb6b; }  /* class     */
+    .fn  { color: #82aaff; }  /* function  */
+    .str { color: #c3e88d; }  /* string    */
+    .cmt { color: #546e7a; font-style: italic; } /* comment */
+    .num { color: #f78c6c; }  /* number    */
+    .prp { color: #f07178; }  /* property  */
+
+    /* ─── Navigation ────────────────────────────────────────────────── */
+    #nav {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 14px;
+      z-index: 100;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 10px 24px;
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 200ms ease;
+      letter-spacing: 0.04em;
+    }
+
+    .nav-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(124,106,255,0.35);
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .nav-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .key-hint {
+      position: fixed;
+      bottom: 28px; right: 32px;
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 7px;
+      font-size: 0.65rem;
+      font-family: monospace;
+    }
+
+    /* ════════════════════════════════════════════════════
+       SLIDE-SPECIFIC VISUAL DIAGRAMS
+    ════════════════════════════════════════════════════ */
+
+    /* ── Slide 1: Title decorations ──────────────────────────────────── */
+    .title-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,201,167,0.1);
+      border: 1px solid rgba(0,201,167,0.3);
+      border-radius: 20px;
+      padding: 5px 16px;
+      font-size: 0.78rem;
+      color: var(--accent2);
+      letter-spacing: 0.08em;
+      margin-bottom: 1.6rem;
+    }
+
+    .title-tags {
+      display: flex;
+      gap: 10px;
+      margin-top: 1.6rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .tag {
+      background: rgba(124,106,255,0.1);
+      border: 1px solid rgba(124,106,255,0.25);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+
+    /* ── Slide 2: Expanded Widget Diagram ────────────────────────────── */
+    .row-diagram {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      width: 100%;
+      max-width: 620px;
+      height: 80px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 2px solid var(--border);
+    }
+
+    .row-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      gap: 3px;
+    }
+
+    .row-box-fixed {
+      flex: 0 0 100px;
+      background: var(--bg-panel);
+      border-right: 2px dashed var(--border);
+      color: var(--text-dim);
+    }
+
+    .row-box-expanded {
+      flex: 1;
+      background: linear-gradient(135deg, rgba(124,106,255,0.22), rgba(0,201,167,0.18));
+      color: var(--accent2);
+    }
+
+    .row-box span {
+      font-size: 0.62rem;
+      font-weight: 400;
+      color: var(--text-dim);
+    }
+
+    .diagram-label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+    }
+
+    /* ── Slide 3: Phone Frame ────────────────────────────────────────── */
+    .phone-frame {
+      width: 140px;
+      height: 260px;
+      border: 3px solid var(--border);
+      border-radius: 24px;
+      background: var(--bg-panel);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 8px;
+      gap: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .phone-notch {
+      width: 36px;
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    .list-item-vis {
+      width: 100%;
+      height: 30px;
+      background: var(--bg-card);
+      border-radius: 6px;
+      margin-bottom: 5px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 6px;
+    }
+
+    .list-item-vis .li-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .list-item-vis .li-line {
+      height: 6px;
+      flex: 1;
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .list-item-vis.loading {
+      opacity: 0.2;
+    }
+
+    .phone-label {
+      position: absolute;
+      bottom: -28px;
+      font-size: 0.68rem;
+      color: var(--accent2);
+      font-weight: 600;
+    }
+
+    /* ── Slide 4: Grid Diagram ───────────────────────────────────────── */
+    .grid-demo {
+      display: grid;
+      grid-template-columns: repeat(3, 90px);
+      grid-template-rows: repeat(2, 90px);
+      gap: 10px;
+    }
+
+    .grid-cell {
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    /* ── Slide 5: Prop-Drilling Diagram ─────────────────────────────── */
+    .prop-drill {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      position: relative;
+    }
+
+    .drill-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 180px;
+      height: 46px;
+      border-radius: 8px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      position: relative;
+      z-index: 1;
+    }
+
+    .drill-box.top {
+      background: rgba(255,107,107,0.12);
+      border-color: rgba(255,107,107,0.4);
+      color: var(--accent3);
+    }
+
+    .drill-box.bottom {
+      background: rgba(124,106,255,0.12);
+      border-color: rgba(124,106,255,0.4);
+      color: var(--accent);
+    }
+
+    .drill-arrow {
+      width: 2px;
+      height: 22px;
+      background: var(--border);
+      position: relative;
+    }
+
+    .drill-arrow::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 7px solid var(--border);
+    }
+
+    .var-badge {
+      position: absolute;
+      right: -52px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.62rem;
+      background: rgba(255,209,102,0.15);
+      border: 1px solid rgba(255,209,102,0.3);
+      color: var(--accent4);
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+
+    /* ── Slide 6: Old Way vs Provider ───────────────────────────────── */
+    .compare {
+      display: flex;
+      gap: 3rem;
+      align-items: flex-start;
+    }
+
+    .compare-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .compare-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .old-way-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .ow-box {
+      width: 110px;
+      height: 34px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+
+    .ow-box.highlight-data {
+      background: rgba(255,107,107,0.12);
+      border-color: rgba(255,107,107,0.4);
+      color: var(--accent3);
+      font-weight: 700;
+    }
+
+    .ow-connector {
+      width: 2px;
+      height: 16px;
+      background: var(--accent3);
+      opacity: 0.4;
+      position: relative;
+    }
+
+    .ow-connector::after {
+      content: 'data';
+      position: absolute;
+      left: 5px; top: 3px;
+      font-size: 0.55rem;
+      color: var(--accent3);
+      white-space: nowrap;
+    }
+
+    /* Provider cloud side */
+    .cloud-box {
+      width: 130px;
+      height: 52px;
+      background: linear-gradient(135deg, rgba(124,106,255,0.2), rgba(0,201,167,0.2));
+      border: 2px solid var(--accent);
+      border-radius: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .prov-diagram {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .prov-dot-box {
+      width: 100px;
+      height: 34px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+
+    .prov-dot-box.dim {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      opacity: 0.4;
+    }
+
+    .prov-dot-box.active {
+      background: rgba(0,201,167,0.12);
+      border: 1px solid rgba(0,201,167,0.4);
+      color: var(--accent2);
+      font-weight: 700;
+      opacity: 1;
+    }
+
+    .prov-line {
+      position: absolute;
+      left: 50%;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--accent), var(--accent2));
+      transform: translateX(-50%);
+    }
+
+    .prov-gap {
+      height: 14px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* ── Slide 7: Package Cards ──────────────────────────────────────── */
+    .pkg-grid {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .pkg-card {
+      width: 130px;
+      border-radius: var(--radius);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    .pkg-card.featured {
+      border-color: var(--accent);
+      background: rgba(124,106,255,0.08);
+    }
+
+    .pkg-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .pkg-name { font-size: 0.78rem; font-weight: 700; }
+    .pkg-tag  { font-size: 0.62rem; color: var(--text-dim); }
+
+    .pkg-card.featured .pkg-name { color: var(--accent); }
+
+    /* ── Step slides: header + code ─────────────────────────────────── */
+    .step-layout {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
+      width: 100%;
+    }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,201,167,0.1);
+      border: 1px solid rgba(0,201,167,0.3);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--accent2);
+    }
+
+    .step-number {
+      background: var(--accent2);
+      color: var(--bg-deep);
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 900;
+    }
+
+    /* ── Concept chip ────────────────────────────────────────────────── */
+    .concept-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,209,102,0.08);
+      border: 1px solid rgba(255,209,102,0.25);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.78rem;
+      color: var(--accent4);
+      font-weight: 600;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Progress -->
+  <div id="progress-bar"></div>
+  <div id="counter"></div>
+
+  <!-- Slides -->
+  <div id="slides-container">
+
+    <!-- ══════════════════════ SLIDE 1 — Title ════════════════════════ -->
+    <div class="slide" id="slide-1">
+      <!-- Flutter Logo -->
+      <div style="margin-bottom:1.4rem;filter:drop-shadow(0 0 22px rgba(84,197,248,0.45));">
+        <svg width="78" height="96" viewBox="0 0 55 68" xmlns="http://www.w3.org/2000/svg">
+          <!-- Top diagonal bar — the "stem" of the F -->
+          <path d="M38.5 0 L0 38.5 L10.5 49 L49 10.5 Z" fill="#54C5F8"/>
+          <!-- Upper diamond -->
+          <path d="M38.5 28 L19.5 47 L38.5 66 L57.5 47 Z" fill="#54C5F8"/>
+          <!-- Dark shadow cut on upper diamond -->
+          <path d="M38.5 28 L19.5 47 L29 56.5 L48 37.5 Z" fill="#01579B"/>
+          <!-- Lower diamond -->
+          <path d="M19.5 47 L38.5 66 L57.5 47 L38.5 28 Z" fill="#29B6F6" opacity="0"/>
+          <!-- Lower chevron (below upper diamond) -->
+          <path d="M19.5 66 L38.5 85 L57.5 66 L38.5 47 Z" fill="#29B6F6"/>
+        </svg>
+      </div>
+      <div class="title-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+        Flutter Workshop
+      </div>
+      <h1>Advanced UI &amp;<br>State Management</h1>
+      <p class="subtitle">Mastering Expanded, ListViews, GridViews, and the Provider pattern — step by step.</p>
+      <div class="title-tags">
+        <span class="tag">Expanded</span>
+        <span class="tag">ListView.builder</span>
+        <span class="tag">GridView</span>
+        <span class="tag">Provider</span>
+        <span class="tag">ChangeNotifier</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════ SLIDE 2 — Expanded ════════════════════════ -->
+    <div class="slide" id="slide-2">
+      <div class="slide-label">UI Widgets</div>
+      <h2>The <span style="color:var(--accent)">Expanded</span> Widget</h2>
+      <p class="explain">
+        Think of <strong>Expanded</strong> as a <em>greedy widget</em>.<br>
+        It takes up all the <strong>remaining empty space</strong> inside a Row or Column.
+      </p>
+
+      <!-- Visual diagram -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0.6rem;width:100%;max-width:620px;">
+        <div class="diagram-label">Row( children: [ Box, Expanded( child: Box ) ] )</div>
+        <div class="row-diagram">
+          <div class="row-box row-box-fixed">
+            <span style="color:var(--text);font-size:0.75rem;">Box</span>
+            <span>width: 100</span>
+          </div>
+          <div class="row-box row-box-expanded">
+            <span style="color:var(--accent2);font-size:0.85rem;">Expanded</span>
+            <span>takes ALL remaining space</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;width:100%;padding:0 2px;">
+          <span style="font-size:0.65rem;color:var(--text-dim);">← fixed width →</span>
+          <span style="font-size:0.65rem;color:var(--accent2);">← flex: 1 (fills everything) →</span>
+        </div>
+      </div>
+
+      <div class="code-wrap" style="margin-top:1rem;">
+        <div class="code-header">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+          <span class="code-file">example.dart</span>
+        </div>
+        <pre><span class="cls">Row</span>(<span class="prp">children</span>: [
+  <span class="cls">Container</span>(<span class="prp">width</span>: <span class="num">100</span>, <span class="prp">color</span>: <span class="cls">Colors</span>.blue),
+  <span class="cls">Expanded</span>(           <span class="cmt">// greedily fills the rest</span>
+    <span class="prp">child</span>: <span class="cls">Container</span>(<span class="prp">color</span>: <span class="cls">Colors</span>.green),
+  ),
+])</pre>
+      </div>
+    </div>
+
+    <!-- ════════════════ SLIDE 3 — ListView.builder ══════════════════ -->
+    <div class="slide" id="slide-3">
+      <div class="slide-label">UI Widgets</div>
+      <h2><span style="color:var(--accent)">ListView</span>.builder</h2>
+      <p class="explain">
+        A regular <strong>ListView</strong> builds <em>every item at once</em> — it crashes with large lists.
+        <strong>ListView.builder</strong> is smart: it only renders the items <em>currently on screen</em>.
+      </p>
+
+      <div style="display:flex;align-items:flex-start;gap:3rem;">
+        <!-- Phone mockup -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.5rem;position:relative;">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="list-item-vis"><div class="li-dot"></div><div class="li-line"></div></div>
+            <div class="list-item-vis"><div class="li-dot" style="background:var(--accent2)"></div><div class="li-line"></div></div>
+            <div class="list-item-vis"><div class="li-dot" style="background:var(--accent4)"></div><div class="li-line"></div></div>
+            <div class="list-item-vis"><div class="li-dot"></div><div class="li-line"></div></div>
+            <div class="list-item-vis loading"><div class="li-dot"></div><div class="li-line"></div></div>
+          </div>
+          <span style="font-size:0.65rem;color:var(--accent2);font-weight:600;margin-top:4px;">Only visible items built ✓</span>
+        </div>
+
+        <!-- Code -->
+        <div class="code-wrap" style="max-width:420px;">
+          <div class="code-header">
+            <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            <span class="code-file">home.dart</span>
+          </div>
+          <pre><span class="cls">ListView</span>.<span class="fn">builder</span>(
+  <span class="prp">itemCount</span>: items.<span class="prp">length</span>,
+  <span class="prp">itemBuilder</span>: (<span class="prp">context</span>, <span class="prp">index</span>) {
+    <span class="kw">return</span> <span class="cls">ListTile</span>(
+      <span class="prp">title</span>: <span class="cls">Text</span>(items[index]),
+    );
+  },
+)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ SLIDE 4 — GridView ════════════════════════ -->
+    <div class="slide" id="slide-4">
+      <div class="slide-label">UI Widgets</div>
+      <h2>The <span style="color:var(--accent)">GridView</span> Widget</h2>
+      <p class="explain">
+        Perfect for <strong>gallery</strong>, <strong>Instagram</strong>, or <strong>Pinterest</strong> layouts.
+        Use <em>crossAxisCount</em> to set how many columns you want.
+      </p>
+
+      <div style="display:flex;align-items:center;gap:3rem;">
+        <!-- CSS Grid visual -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.6rem;">
+          <div class="diagram-label">crossAxisCount: 3</div>
+          <div class="grid-demo">
+            <div class="grid-cell" style="background:rgba(124,106,255,0.25);border:1px solid rgba(124,106,255,0.4);">🌄</div>
+            <div class="grid-cell" style="background:rgba(0,201,167,0.2);border:1px solid rgba(0,201,167,0.4);">🌅</div>
+            <div class="grid-cell" style="background:rgba(255,107,107,0.2);border:1px solid rgba(255,107,107,0.4);">🏔</div>
+            <div class="grid-cell" style="background:rgba(255,209,102,0.2);border:1px solid rgba(255,209,102,0.4);">🌊</div>
+            <div class="grid-cell" style="background:rgba(124,106,255,0.2);border:1px solid rgba(124,106,255,0.4);">🌸</div>
+            <div class="grid-cell" style="background:rgba(0,201,167,0.15);border:1px solid rgba(0,201,167,0.4);">🏙</div>
+          </div>
+        </div>
+
+        <!-- Code -->
+        <div class="code-wrap" style="max-width:400px;">
+          <div class="code-header">
+            <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            <span class="code-file">gallery.dart</span>
+          </div>
+          <pre><span class="cls">GridView</span>.<span class="fn">builder</span>(
+  <span class="prp">gridDelegate</span>:
+    <span class="cls">SliverGridDelegateWith</span>
+    <span class="cls">FixedCrossAxisCount</span>(
+      <span class="prp">crossAxisCount</span>: <span class="num">3</span>,
+      <span class="prp">crossAxisSpacing</span>: <span class="num">10</span>,
+    ),
+  <span class="prp">itemCount</span>: photos.<span class="prp">length</span>,
+  <span class="prp">itemBuilder</span>: (<span class="prp">ctx</span>, <span class="prp">i</span>) =&gt;
+    <span class="cls">PhotoTile</span>(<span class="prp">photo</span>: photos[i]),
+)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ SLIDE 5 — Prop Drilling ═════════════════════ -->
+    <div class="slide" id="slide-5">
+      <div class="slide-label">State Management</div>
+      <h2>The <span style="color:var(--accent3)">State Problem</span></h2>
+      <p class="explain">
+        If a button at the <em>bottom</em> needs data from the <strong>top</strong>,
+        passing it through every widget in the middle is messy.
+        We call this <strong>"Prop Drilling."</strong>
+      </p>
+
+      <div class="concept-chip" style="margin-bottom:1.4rem;">😩 Prop Drilling = Pain</div>
+
+      <div class="prop-drill">
+        <div class="drill-box top">
+          🗄 Top Widget
+          <span class="var-badge">count = 5</span>
+        </div>
+        <div class="drill-arrow"></div>
+        <div class="drill-box">Widget A
+          <span class="var-badge">count = 5</span>
+        </div>
+        <div class="drill-arrow"></div>
+        <div class="drill-box">Widget B
+          <span class="var-badge">count = 5</span>
+        </div>
+        <div class="drill-arrow"></div>
+        <div class="drill-box bottom">
+          👆 Button (needs count)
+        </div>
+      </div>
+
+      <p style="font-size:0.78rem;color:var(--text-dim);margin-top:1.2rem;max-width:480px;text-align:center;">
+        Every layer must accept and pass down the variable — even if it doesn't use it. This breaks as your app grows.
+      </p>
+    </div>
+
+    <!-- ════════════════ SLIDE 6 — Visualizing the Fix ═══════════════ -->
+    <div class="slide" id="slide-6">
+      <div class="slide-label">State Management</div>
+      <h2>Visualizing the <span style="color:var(--accent2)">Fix</span></h2>
+
+      <div class="compare">
+        <!-- Old way -->
+        <div class="compare-col">
+          <div class="compare-title" style="color:var(--accent3);">❌ The Old Way</div>
+          <div class="old-way-stack">
+            <div class="ow-box highlight-data">count = 5 (source)</div>
+            <div class="ow-connector"></div>
+            <div class="ow-box">passes count down</div>
+            <div class="ow-connector"></div>
+            <div class="ow-box">passes count down</div>
+            <div class="ow-connector"></div>
+            <div class="ow-box">passes count down</div>
+            <div class="ow-connector"></div>
+            <div class="ow-box highlight-data" style="border-color:rgba(124,106,255,0.4);color:var(--accent);">finally uses count</div>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="width:1px;background:var(--border);height:260px;align-self:center;"></div>
+
+        <!-- Provider -->
+        <div class="compare-col">
+          <div class="compare-title" style="color:var(--accent2);">✅ Provider Way</div>
+          <div class="prov-diagram" style="height:260px;justify-content:space-between;">
+            <div class="cloud-box">☁ Provider<br><span style="font-size:0.6rem;color:var(--text-dim);">count = 5 lives here</span></div>
+
+            <!-- dashed line skipping middle -->
+            <div style="position:relative;width:2px;flex:1;background:linear-gradient(to bottom,var(--accent),var(--accent2));margin:0 auto;">
+              <div style="position:absolute;left:12px;top:30%;font-size:0.58rem;color:var(--text-dim);white-space:nowrap;">middle widgets<br>unaffected</div>
+            </div>
+
+            <div class="prov-dot-box active">👆 Button reads count<br><span style="font-size:0.6rem;color:var(--accent2);">directly from cloud</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ SLIDE 7 — Packages ════════════════════════ -->
+    <div class="slide" id="slide-7">
+      <div class="slide-label">State Management</div>
+      <h2>State Management <span style="color:var(--accent)">Packages</span></h2>
+      <p class="explain">
+        There are many tools to fix prop drilling.
+        <strong>Provider</strong> is the <em>official starting point</em> — think of it as a
+        <strong>global storage room</strong> that any screen can walk into and grab data from.
+      </p>
+
+      <div class="pkg-grid">
+        <div class="pkg-card">
+          <div class="pkg-icon" style="background:rgba(255,107,107,0.15);">🧱</div>
+          <div class="pkg-name">BLoC</div>
+          <div class="pkg-tag">Powerful, Complex</div>
+        </div>
+        <div class="pkg-card featured">
+          <div class="pkg-icon" style="background:rgba(124,106,255,0.2);">✅</div>
+          <div class="pkg-name">Provider</div>
+          <div class="pkg-tag" style="color:var(--accent2);">Official & Simple</div>
+          <div style="font-size:0.6rem;margin-top:2px;color:var(--text-dim);">← Start here</div>
+        </div>
+        <div class="pkg-card">
+          <div class="pkg-icon" style="background:rgba(0,201,167,0.15);">⚡</div>
+          <div class="pkg-name">Riverpod</div>
+          <div class="pkg-tag">Modern, Testable</div>
+        </div>
+        <div class="pkg-card">
+          <div class="pkg-icon" style="background:rgba(255,209,102,0.15);">🚀</div>
+          <div class="pkg-name">GetX</div>
+          <div class="pkg-tag">Fast, Minimal</div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.4rem;font-size:0.8rem;color:var(--text-dim);max-width:520px;text-align:center;">
+        All solve the same problem — Provider is recommended by the Flutter team for beginners.
+      </div>
+    </div>
+
+    <!-- ════════════════ SLIDE 8 — Step 1: The Brain ═════════════════ -->
+    <div class="slide" id="slide-8">
+      <div class="slide-label">Provider Steps</div>
+      <div class="step-layout">
+        <div class="step-badge"><span class="step-number">1</span> Create The Brain</div>
+        <h2>The <span style="color:var(--accent)">ChangeNotifier</span></h2>
+        <p class="explain" style="margin-bottom:0;">
+          Create a class that <strong>holds your data</strong>.
+          When something changes, call <em>notifyListeners()</em> — it shouts to every widget that's listening.
+        </p>
+
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            <span class="code-file">cart_provider.dart</span>
+          </div>
+          <pre><span class="kw">import</span> <span class="str">'package:flutter/material.dart'</span>;
+
+<span class="kw">class</span> <span class="cls">CartProvider</span> <span class="kw">extends</span> <span class="cls">ChangeNotifier</span> {
+  <span class="kw">int</span> <span class="prp">itemCount</span> = <span class="num">0</span>;   <span class="cmt">// our data lives here</span>
+
+  <span class="kw">void</span> <span class="fn">addItem</span>() {
+    <span class="prp">itemCount</span>++;
+    <span class="fn">notifyListeners</span>();  <span class="cmt">// 📣 shout to all listeners</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ SLIDE 9 — Step 2: The Plug ══════════════════ -->
+    <div class="slide" id="slide-9">
+      <div class="slide-label">Provider Steps</div>
+      <div class="step-layout">
+        <div class="step-badge"><span class="step-number">2</span> Plug It In</div>
+        <h2>The <span style="color:var(--accent)">ChangeNotifierProvider</span></h2>
+        <p class="explain" style="margin-bottom:0;">
+          Wrap your app with <strong>ChangeNotifierProvider</strong> at the very top.
+          Now <em>every screen</em> in the app can access the Brain.
+        </p>
+
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            <span class="code-file">main.dart</span>
+          </div>
+          <pre><span class="kw">void</span> <span class="fn">main</span>() {
+  <span class="fn">runApp</span>(
+    <span class="cls">ChangeNotifierProvider</span>(     <span class="cmt">// 🔌 the plug</span>
+      <span class="prp">create</span>: (_) =&gt; <span class="cls">CartProvider</span>(),
+      <span class="prp">child</span>: <span class="kw">const</span> <span class="cls">MyApp</span>(),
+    ),
+  );
+}</pre>
+        </div>
+
+        <div style="font-size:0.8rem;color:var(--text-dim);text-align:center;max-width:500px;">
+          Place it <strong style="color:var(--accent4);">above</strong> <code style="color:var(--accent);font-size:0.8rem;">MaterialApp</code> so the whole widget tree has access.
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ SLIDE 10 — Step 3: The Ears ═════════════════ -->
+    <div class="slide" id="slide-10">
+      <div class="slide-label">Provider Steps</div>
+      <div class="step-layout">
+        <div class="step-badge"><span class="step-number">3</span> Listen To Data</div>
+        <h2><span style="color:var(--accent2)">context.watch</span> — The Ears</h2>
+        <p class="explain" style="margin-bottom:0;">
+          Widgets that <strong>display</strong> data use <em>context.watch</em>.
+          They rebuild <strong>automatically</strong> whenever the Brain calls notifyListeners().
+        </p>
+
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            <span class="code-file">cart_screen.dart</span>
+          </div>
+          <pre><span class="kw">class</span> <span class="cls">CartScreen</span> <span class="kw">extends</span> <span class="cls">StatelessWidget</span> {
+  <span class="kw">@override</span>
+  <span class="cls">Widget</span> <span class="fn">build</span>(<span class="cls">BuildContext</span> <span class="prp">context</span>) {
+    <span class="cmt">// 👂 watching — rebuilds when data changes</span>
+    <span class="kw">final</span> <span class="prp">count</span> = <span class="prp">context</span>
+      .<span class="fn">watch</span>&lt;<span class="cls">CartProvider</span>&gt;()
+      .<span class="prp">itemCount</span>;
+
+    <span class="kw">return</span> <span class="cls">Text</span>(<span class="str">'Items in cart: </span><span class="prp">$count</span><span class="str">'</span>);
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ SLIDE 11 — Step 4: The Hands ════════════════ -->
+    <div class="slide" id="slide-11">
+      <div class="slide-label">Provider Steps</div>
+      <div class="step-layout">
+        <div class="step-badge"><span class="step-number">4</span> Trigger Actions</div>
+        <h2><span style="color:var(--accent4)">context.read</span> — The Hands</h2>
+        <p class="explain" style="margin-bottom:0;">
+          Buttons that just <strong>change data</strong> — without needing to display it — use <em>context.read</em>.
+          It's faster because it <strong>never rebuilds</strong> the widget.
+        </p>
+
+        <div class="code-wrap">
+          <div class="code-header">
+            <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            <span class="code-file">product_card.dart</span>
+          </div>
+          <pre><span class="cls">FloatingActionButton</span>(
+  <span class="prp">onPressed</span>: () {
+    <span class="cmt">// 👆 reading — calls method, NO rebuild</span>
+    <span class="prp">context</span>
+      .<span class="fn">read</span>&lt;<span class="cls">CartProvider</span>&gt;()
+      .<span class="fn">addItem</span>();
+  },
+  <span class="prp">child</span>: <span class="kw">const</span> <span class="cls">Icon</span>(<span class="cls">Icons</span>.add),
+)</pre>
+        </div>
+
+        <div style="display:flex;gap:1.4rem;margin-top:0.2rem;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:var(--accent2);">
+            <span style="font-size:1rem;">👂</span>
+            <span><strong>context.watch</strong> — displays + listens</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:var(--accent4);">
+            <span style="font-size:1rem;">👆</span>
+            <span><strong>context.read</strong> — acts, never rebuilds</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /slides-container -->
+
+  <!-- Navigation -->
+  <div id="nav">
+    <button class="nav-btn" id="btn-prev" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      Prev
+    </button>
+    <button class="nav-btn" id="btn-next">
+      Next
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg>
+    </button>
+  </div>
+
+  <div class="key-hint">
+    <span class="kbd">←</span>
+    <span class="kbd">→</span>
+    arrow keys
+  </div>
+
+  <script>
+    const TOTAL = 11;
+    let current = 1;
+    let animating = false;
+
+    const progressBar = document.getElementById('progress-bar');
+    const counter     = document.getElementById('counter');
+    const btnPrev     = document.getElementById('btn-prev');
+    const btnNext     = document.getElementById('btn-next');
+
+    function getSlide(n) {
+      return document.getElementById('slide-' + n);
+    }
+
+    function updateUI() {
+      const pct = (current / TOTAL) * 100;
+      progressBar.style.width = pct + '%';
+      counter.textContent = current + ' / ' + TOTAL;
+      btnPrev.disabled = current === 1;
+      btnNext.disabled = current === TOTAL;
+    }
+
+    function goTo(next) {
+      if (animating) return;
+      if (next < 1 || next > TOTAL) return;
+      if (next === current) return;
+
+      animating = true;
+      const prevSlide = getSlide(current);
+      const nextSlide = getSlide(next);
+
+      // Exit current
+      prevSlide.classList.remove('active');
+      prevSlide.classList.add('exit');
+
+      // After CSS transition, clean up and show next
+      setTimeout(() => {
+        prevSlide.classList.remove('exit');
+        nextSlide.classList.add('active');
+        current = next;
+        updateUI();
+        setTimeout(() => { animating = false; }, 100);
+      }, 320); // slightly less than transition duration for snappiness
+    }
+
+    // Init
+    getSlide(1).classList.add('active');
+    updateUI();
+
+    btnNext.addEventListener('click', () => goTo(current + 1));
+    btnPrev.addEventListener('click', () => goTo(current - 1));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goTo(current + 1);
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   goTo(current - 1);
+    });
+  </script>
+</body>
+</html>
