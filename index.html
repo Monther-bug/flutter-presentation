@@ -24,6 +24,10 @@
       --trans:      600ms cubic-bezier(0.4, 0, 0.2, 1);
     }
 
+    html {
+      font-size: 18px;
+    }
+
     html, body {
       height: 100%;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -68,7 +72,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 3rem 5rem 5rem;
+      padding: 2rem 3rem 4rem;
       opacity: 0;
       transform: translateY(40px);
       transition: opacity var(--trans), transform var(--trans);
@@ -103,7 +107,7 @@
 
     /* ─── Typography ────────────────────────────────────────────────── */
     h1 {
-      font-size: clamp(2rem, 4vw, 3.4rem);
+      font-size: clamp(2.4rem, 4.5vw, 4rem);
       font-weight: 800;
       line-height: 1.15;
       text-align: center;
@@ -115,7 +119,7 @@
     }
 
     h2 {
-      font-size: clamp(1.4rem, 2.5vw, 2rem);
+      font-size: clamp(1.6rem, 2.8vw, 2.4rem);
       font-weight: 700;
       margin-bottom: 0.5rem;
       color: var(--text);
@@ -723,18 +727,18 @@
     <!-- ══════════════════════ SLIDE 1 — Title ════════════════════════ -->
     <div class="slide" id="slide-1">
       <!-- Flutter Logo -->
-      <div style="margin-bottom:1.4rem;filter:drop-shadow(0 0 22px rgba(84,197,248,0.45));">
-        <svg width="78" height="96" viewBox="0 0 55 68" xmlns="http://www.w3.org/2000/svg">
-          <!-- Top diagonal bar — the "stem" of the F -->
-          <path d="M38.5 0 L0 38.5 L10.5 49 L49 10.5 Z" fill="#54C5F8"/>
-          <!-- Upper diamond -->
-          <path d="M38.5 28 L19.5 47 L38.5 66 L57.5 47 Z" fill="#54C5F8"/>
-          <!-- Dark shadow cut on upper diamond -->
-          <path d="M38.5 28 L19.5 47 L29 56.5 L48 37.5 Z" fill="#01579B"/>
-          <!-- Lower diamond -->
-          <path d="M19.5 47 L38.5 66 L57.5 47 L38.5 28 Z" fill="#29B6F6" opacity="0"/>
-          <!-- Lower chevron (below upper diamond) -->
-          <path d="M19.5 66 L38.5 85 L57.5 66 L38.5 47 Z" fill="#29B6F6"/>
+      <div style="margin-bottom:1.6rem;position:relative;display:inline-flex;align-items:center;justify-content:center;">
+        <!-- Glow halo -->
+        <div style="position:absolute;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(71,197,251,0.18) 0%,transparent 70%);"></div>
+        <svg width="92" height="112" viewBox="0 0 56 82" xmlns="http://www.w3.org/2000/svg">
+          <!-- Top diagonal bar -->
+          <polygon points="38,0 0,38 11,49 49,11" fill="#47C5FB"/>
+          <!-- Upper chevron (full diamond, light blue) -->
+          <polygon points="38,27 20,45 38,63 56,45" fill="#47C5FB"/>
+          <!-- Dark blue parallelogram — cuts lower-left of upper chevron -->
+          <polygon points="38,27 20,45 29,54 47,36" fill="#0175C2"/>
+          <!-- Lower chevron (medium blue) -->
+          <polygon points="20,63 38,81 56,63 38,45" fill="#29B6F6"/>
         </svg>
       </div>
       <div class="title-badge">
